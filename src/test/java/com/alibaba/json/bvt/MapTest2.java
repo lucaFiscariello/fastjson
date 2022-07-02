@@ -1,19 +1,133 @@
 package com.alibaba.json.bvt;
 
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
+import clojure.lang.Obj;
+import com.alibaba.fastjson.parser.ParserConfig;
+import org.json.JSONObject;
 import org.junit.Assert;
 import junit.framework.TestCase;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-
+@RunWith(Parameterized.class)
 public class MapTest2 extends TestCase {
-    public void test_map () throws Exception {
-Map<Object, Object> map = JSON.parseObject("{1:\"2\",\"3\":4,'5':6}", new TypeReference<Map<Object, Object>>() {});
-Assert.assertEquals("2", map.get(1));
-Assert.assertEquals(4, map.get("3"));
-Assert.assertEquals(6, map.get("5"));
+
+    private List<Object> key;
+    private List<Object> value;
+    private String stringToConvert;
+    private HashMap<Object,Object> mapExpected;
+    private boolean expectedNUll;
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                { Arrays.asList(1,"3",'5'),Arrays.asList("2",4,6)},
+                { Arrays.asList(1,4,"6"),Arrays.asList("2","3",'5')},
+                { Arrays.asList(1,4,6),Arrays.asList(2,3,5)},
+                { Arrays.asList("1","4","6"),Arrays.asList("2","3","5")},
+                { Arrays.asList("1","4","6"),Arrays.asList(2,3,5)},
+                {List.of(), List.of()},
+                { null,null},
+
+        });
     }
+
+    private void configure() {
+
+        if(key==null || value==null)
+            return;
+
+        if(key.size() ==0 || value.size()==0){
+            stringToConvert="";
+            return;
+        }
+
+
+        mapExpected = new HashMap<>();
+
+        stringToConvert="{";
+        for(int i=0; i<key.size();i++){
+
+            mapExpected.put(key.get(i) ,value.get(i));
+
+            if(key.get(i) instanceof Integer)
+                stringToConvert=stringToConvert+key.get(i);
+
+            if(key.get(i) instanceof String)
+                stringToConvert=stringToConvert+"\""+key.get(i)+"\"";
+
+            if(key.get(i) instanceof Character)
+                stringToConvert=stringToConvert+"'"+key.get(i)+"'";
+
+            stringToConvert=stringToConvert+":";
+
+            if(value.get(i) instanceof Integer)
+                stringToConvert=stringToConvert+value.get(i);
+
+            if(value.get(i) instanceof String)
+                stringToConvert=stringToConvert+"\""+value.get(i)+"\"";
+
+            if(value.get(i) instanceof Character)
+                stringToConvert=stringToConvert+"'"+value.get(i)+"'";
+
+            stringToConvert=stringToConvert+",";
+
+        }
+
+        stringToConvert= stringToConvert.substring(0,stringToConvert.length()-1);
+        stringToConvert=stringToConvert+"}";
+
+    }
+
+    public void getOracle(){
+        if(stringToConvert==null || stringToConvert.length()==0)
+            expectedNUll=true;
+    }
+
+    public MapTest2(List<Object> key,List<Object> value ) {
+        this.key=key;
+        this.value=value;
+        configure();
+        getOracle();
+    }
+
+
+    @Test
+    public void test_map ()  {
+
+        Map<Object, Object> map = JSON.parseObject(stringToConvert, new TypeReference<Map<Object, Object>>() {});
+
+        if(expectedNUll)
+            assertNull(map);
+        else{
+            Set<Object> keySet = mapExpected.keySet();
+            Object key;
+            Object valueExpected;
+
+            for(Object keyPartial: keySet) {
+                valueExpected = mapExpected.get(keyPartial);
+
+                if (keyPartial instanceof Character)
+                    key = String.valueOf(keyPartial);
+                else
+                    key = keyPartial;
+
+                if (valueExpected instanceof Character)
+                    valueExpected = String.valueOf(valueExpected);
+
+
+                Assert.assertEquals(valueExpected, map.get(key));
+            }
+        }
+
+    }
+
+
 }
+
