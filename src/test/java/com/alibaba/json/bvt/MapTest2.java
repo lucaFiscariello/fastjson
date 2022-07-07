@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.*;
 
 import clojure.lang.Obj;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.parser.ParserConfig;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -23,6 +24,7 @@ public class MapTest2 extends TestCase {
     private String stringToConvert;
     private HashMap<Object,Object> mapExpected;
     private boolean expectedNUll;
+    private boolean expectedJsonException;
 
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
@@ -32,7 +34,9 @@ public class MapTest2 extends TestCase {
                 { Arrays.asList(1,4,6),Arrays.asList(2,3,5)},
                 { Arrays.asList("1","4","6"),Arrays.asList("2","3","5")},
                 { Arrays.asList("1","4","6"),Arrays.asList(2,3,5)},
-                {List.of(), List.of()},
+                { Arrays.asList(null,"4","6"),Arrays.asList(2,3,5)},
+                { Arrays.asList(null,"4","6"),Arrays.asList(null,3,5)},
+                {Arrays.asList(), Arrays.asList()},
                 { null,null},
 
         });
@@ -88,6 +92,8 @@ public class MapTest2 extends TestCase {
     public void getOracle(){
         if(stringToConvert==null || stringToConvert.length()==0)
             expectedNUll=true;
+        if(key!=null && value!=null && (key.contains(null) || value.contains(null)))
+            expectedJsonException = true;
     }
 
     public MapTest2(List<Object> key,List<Object> value ) {
@@ -101,30 +107,36 @@ public class MapTest2 extends TestCase {
     @Test
     public void test_map ()  {
 
-        Map<Object, Object> map = JSON.parseObject(stringToConvert, new TypeReference<Map<Object, Object>>() {});
 
-        if(expectedNUll)
-            assertNull(map);
-        else{
-            Set<Object> keySet = mapExpected.keySet();
-            Object key;
-            Object valueExpected;
+        try {
+            Map<Object, Object> map = JSON.parseObject(stringToConvert, new TypeReference<Map<Object, Object>>() {});
 
-            for(Object keyPartial: keySet) {
-                valueExpected = mapExpected.get(keyPartial);
+            if(expectedNUll)
+                assertNull(map);
+            else{
+                Set<Object> keySet = mapExpected.keySet();
+                Object key;
+                Object valueExpected;
 
-                if (keyPartial instanceof Character)
-                    key = String.valueOf(keyPartial);
-                else
-                    key = keyPartial;
+                for(Object keyPartial: keySet) {
+                    valueExpected = mapExpected.get(keyPartial);
 
-                if (valueExpected instanceof Character)
-                    valueExpected = String.valueOf(valueExpected);
+                    if (keyPartial instanceof Character)
+                        key = String.valueOf(keyPartial);
+                    else
+                        key = keyPartial;
+
+                    if (valueExpected instanceof Character)
+                        valueExpected = String.valueOf(valueExpected);
 
 
-                Assert.assertEquals(valueExpected, map.get(key));
+                    Assert.assertEquals(valueExpected, map.get(key));
+                }
             }
+        }catch(JSONException e){
+            assertTrue(expectedJsonException);
         }
+
 
     }
 
